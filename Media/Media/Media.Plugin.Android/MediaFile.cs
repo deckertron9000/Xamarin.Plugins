@@ -48,10 +48,11 @@ namespace Media.Plugin
 				throw new ArgumentException ("Intent was not results from MediaPicker", "self");
 
       var uri = (Android.Net.Uri)self.GetParcelableExtra("MediaFile");		
-			bool isPhoto = self.GetBooleanExtra ("isPhoto", false);			
+			bool isPhoto = self.GetBooleanExtra ("isPhoto", false);
+			bool isAudio = self.GetBooleanExtra("isAudio", false);
 			var path = (Android.Net.Uri)self.GetParcelableExtra ("path");
 
-			return MediaPickerActivity.GetMediaFileAsync (context, 0, action, isPhoto, ref path, uri)
+			return MediaPickerActivity.GetMediaFileAsync (context, 0, action, isPhoto, isAudio, ref path, uri)
 				.ContinueWith (t => t.Result.ToTask()).Unwrap();
 		}
 	}

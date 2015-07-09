@@ -31,6 +31,21 @@ namespace Media.Plugin.Abstractions
     /// </summary>
     bool IsPickVideoSupported { get; }
 
+	/// <summary>
+	/// Gets if a microphone is available on the device
+	/// </summary>
+	bool IsMicrophoneAvailable { get; }
+
+	/// <summary>
+	/// Gets if the ability to take audio is supported on the device
+	/// </summary>
+	bool IsTakeAudioSupported { get; }
+
+	/// <summary>
+	/// Gets if the ability to pick audio is supported on the device
+	/// </summary>
+	bool IsPickAudioSupported { get; }
+
     /// <summary>
     /// Picks a photo from the default gallery
     /// </summary>
@@ -57,5 +72,17 @@ namespace Media.Plugin.Abstractions
     /// <returns>Media file of new video or null if canceled</returns>
     Task<MediaFile> TakeVideoAsync(StoreVideoOptions options);
 
+	/// <summary>
+	/// Picks audio from the default gallery
+	/// </summary>
+	/// <returns>Media file of audio or null if cancelled</returns>
+	Task<MediaFile> PickAudioAsync();
+
+	/// <summary>
+	/// Take audio with specified options
+	/// </summary>
+	/// <param name="options">Audio Media Options</param>
+	/// <returns>Media file of new audio or null if cancelled</returns>
+	Task<MediaFile> TakeAudioAsync(StoreAudioOptions options);
   }
 }

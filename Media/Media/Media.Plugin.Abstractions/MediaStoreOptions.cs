@@ -131,4 +131,67 @@ namespace Media.Plugin.Abstractions
       set;
     }
   }
+
+  /// <summary>
+  /// Audio quality
+  /// </summary>
+  public enum AudioQuality
+  {
+	/// <summary>
+	/// Low
+	/// </summary>
+	Low = 0,
+	/// <summary>
+	/// Medium
+	/// </summary>
+	Medium = 1,
+	/// <summary>
+	/// High
+	/// </summary>
+	High = 2,
+  }
+
+  /// <summary>
+  /// Store Audio options
+  /// </summary>
+  public class StoreAudioOptions
+	: StoreMediaOptions
+  {
+	/// <summary>
+	/// Constructor
+	/// </summary>
+	public StoreAudioOptions()
+	{
+	  Quality = AudioQuality.High;
+	  DesiredLength = TimeSpan.FromMinutes(10);
+	  DesiredSize = int.MaxValue;
+	}
+
+	/// <summary>
+	/// Desired Length
+	/// </summary>
+	public TimeSpan DesiredLength
+	{
+	  get;
+	  set;
+	}
+
+	/// <summary>
+	/// Desired Size
+	/// </summary>
+	public int DesiredSize
+	{
+	  get; 
+	  set;
+	}
+
+	/// <summary>
+	/// Desired Quality
+	/// </summary>
+	public AudioQuality Quality
+	{
+	  get;
+	  set;
+	}
+  }
 }

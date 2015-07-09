@@ -41,6 +41,7 @@ namespace Media.Plugin
 
 			this.context = Android.App.Application.Context;
 			IsCameraAvailable = context.PackageManager.HasSystemFeature (PackageManager.FeatureCamera);
+			IsMicrophoneAvailable = context.PackageManager.HasSystemFeature(PackageManager.FeatureMicrophone);
 
 			if (Build.VERSION.SdkInt >= BuildVersionCodes.Gingerbread)
 				IsCameraAvailable |= context.PackageManager.HasSystemFeature (PackageManager.FeatureCameraFront);
@@ -71,6 +72,22 @@ namespace Media.Plugin
     {
       get { return true; }
     }
+	/// <inheritdoc/>
+		public bool IsMicrophoneAvailable
+		{
+			get; 
+			private set; 
+		}
+	/// <inheritdoc/>
+	public bool IsTakeAudioSupported
+	{
+	  get { return true; }
+	}
+	/// <inheritdoc/>
+	public bool IsPickAudioSupported
+	{
+	  get { return true; }
+	}
     /// <summary>
     /// 
     /// </summary>
@@ -117,6 +134,15 @@ namespace Media.Plugin
 			VerifyOptions (options);
 
 			return CreateMediaIntent (GetRequestId(), "video/*", MediaStore.ActionVideoCapture, options, tasked: false);
+		}
+	/// <summary>
+	/// 
+	/// </summary>
+	/// <returns></returns>
+		public Intent GetPickAudioUI()
+		{
+			int id = GetRequestId();
+			return CreateMediaIntent(id, "audio/*", Intent.ActionPick, null, tasked: false);
 		}
 
     /// <summary>
@@ -167,6 +193,30 @@ namespace Media.Plugin
 			return TakeMediaAsync ("video/*", MediaStore.ActionVideoCapture, options);
 		}
 
+	/// <summary>
+	/// Picks audio from the default gallery
+	/// </summary>
+	/// <returns>Media file of audio or null if cancelled</returns>
+	public Task<Media.Plugin.Abstractions.MediaFile> PickAudioAsync()
+		{
+			return TakeMediaAsync("audio/*", Intent.ActionPick, null);
+		}
+
+	/// <summary>
+	/// Take audio with specified options
+	/// </summary>
+	/// <param name="options">Audio Media Options</param>
+	/// <returns>Media file of new audio or null if cancelled</returns>
+	public Task<Media.Plugin.Abstractions.MediaFile> TakeAudioAsync(StoreAudioOptions options)
+		{
+			if (!IsMicrophoneAvailable)
+  				throw new NotSupportedException();
+
+			VerifyOptions (options);
+
+			return TakeMediaAsync ("audio/*", MediaStore.Audio.Media.RecordSoundAction, options);
+		}
+
 		private readonly Context context;
 		private int requestId;
     private TaskCompletionSource<Media.Plugin.Abstractions.MediaFile> completionSource;
@@ -195,6 +245,12 @@ namespace Media.Plugin
 				if (vidOptions != null) {
 					pickerIntent.PutExtra (MediaStore.ExtraDurationLimit, (int)vidOptions.DesiredLength.TotalSeconds);
 					pickerIntent.PutExtra (MediaStore.ExtraVideoQuality, (int)vidOptions.Quality);
+				}
+
+				var audOptions = (options as StoreAudioOptions);
+				if (audOptions != null) {
+					pickerIntent.PutExtra(MediaStore.ExtraDurationLimit, (int)audOptions.DesiredLength.TotalSeconds);
+					pickerIntent.PutExtra(MediaStore.Audio.Media.ExtraMaxBytes, (int) audOptions.Quality);
 				}
 			}
       //pickerIntent.SetFlags(ActivityFlags.ClearTop);

@@ -57,10 +57,13 @@ namespace Media.Plugin
 		/// </summary>
 		private Uri path;
 		private bool isPhoto;
+		private bool isAudio;
 		private string action;
 
 		private int seconds;
+		private int size;
 		private VideoQuality quality;
+		private AudioQuality aQuality;
 
 		private bool tasked;
     /// <summary>
@@ -71,11 +74,13 @@ namespace Media.Plugin
 		{
 			outState.PutBoolean ("ran", true);
 			outState.PutString (MediaStore.MediaColumns.Title, this.title);
+			outState.PutString(MediaStore.Audio.AudioColumns.Title, this.Title);
 			outState.PutString (MediaStore.Images.ImageColumns.Description, this.description);
 			outState.PutInt (ExtraId, this.id);
 			outState.PutString (ExtraType, this.type);
 			outState.PutString (ExtraAction, this.action);
 			outState.PutInt (MediaStore.ExtraDurationLimit, this.seconds);
+			outState.PutInt(MediaStore.Audio.Media.ExtraMaxBytes, this.size);
 			outState.PutInt (MediaStore.ExtraVideoQuality, (int)this.quality);
 			outState.PutBoolean (ExtraTasked, this.tasked);
 
@@ -105,6 +110,8 @@ namespace Media.Plugin
 			this.type = b.GetString (ExtraType);
 			if (this.type == "image/*")
 				this.isPhoto = true;
+			if (this.type == "audio/*")
+				this.isAudio = true;
 
 			this.action = b.GetString (ExtraAction);
 			Intent pickIntent = null;
@@ -121,12 +128,18 @@ namespace Media.Plugin
 						if (this.seconds != 0)
 							pickIntent.PutExtra (MediaStore.ExtraDurationLimit, seconds);
 					}
+					if (this.isAudio)
+					{
+						this.size = b.GetInt(MediaStore.Audio.Media.ExtraMaxBytes, 0);
+						if (this.size != 0)
+							pickIntent.PutExtra(MediaStore.Audio.Media.ExtraMaxBytes, size);
+					}
 
 					this.quality = (VideoQuality)b.GetInt (MediaStore.ExtraVideoQuality, (int)VideoQuality.High);
 					pickIntent.PutExtra (MediaStore.ExtraVideoQuality, GetVideoQuality (this.quality));
 
 					if (!ran) {
-						this.path = GetOutputMediaFile (this, b.GetString (ExtraPath), this.title, this.isPhoto);
+						this.path = GetOutputMediaFile (this, b.GetString (ExtraPath), this.title, this.isPhoto, this.isAudio);
 
 						Touch();
 						pickIntent.PutExtra (MediaStore.ExtraOutput, this.path);
@@ -156,7 +169,7 @@ namespace Media.Plugin
 			File.Create (GetLocalPath (this.path)).Close();
 		}
 
-		internal static Task<MediaPickedEventArgs> GetMediaFileAsync (Context context, int requestCode, string action, bool isPhoto, ref Uri path, Uri data)
+		internal static Task<MediaPickedEventArgs> GetMediaFileAsync (Context context, int requestCode, string action, bool isPhoto, bool isAudio, ref Uri path, Uri data)
 		{
 			Task<Tuple<string, bool>> pathFuture;
 
@@ -231,7 +244,7 @@ namespace Media.Plugin
 				if (resultCode == Result.Canceled)
 					future = TaskFromResult (new MediaPickedEventArgs (requestCode, isCanceled: true));
 				else
-					future = GetMediaFileAsync (this, requestCode, this.action, this.isPhoto, ref this.path, (data != null ) ? data.Data : null);
+					future = GetMediaFileAsync (this, requestCode, this.action, this.isPhoto, this.isAudio, ref this.path, (data != null ) ? data.Data : null);
 
 				Finish();
 
@@ -283,11 +296,11 @@ namespace Media.Plugin
 			}
 		}
 
-		private static string GetUniquePath (string folder, string name, bool isPhoto)
+		private static string GetUniquePath (string folder, string name, bool isPhoto, bool isAudio = false)
 		{
 			string ext = Path.GetExtension (name);
 			if (ext == String.Empty)
-				ext = ((isPhoto) ? ".jpg" : ".mp4");
+				ext = isPhoto ? ".jpg" : (isAudio ? ".mp3" : ".mp4");
 
 			name = Path.GetFileNameWithoutExtension (name);
 
@@ -299,7 +312,7 @@ namespace Media.Plugin
 			return Path.Combine (folder, nname);
 		}
 
-		private static Uri GetOutputMediaFile (Context context, string subdir, string name, bool isPhoto)
+		private static Uri GetOutputMediaFile (Context context, string subdir, string name, bool isPhoto, bool isAudio = false)
 		{
 			subdir = subdir ?? String.Empty;
 
@@ -308,11 +321,14 @@ namespace Media.Plugin
 				string timestamp = DateTime.Now.ToString ("yyyyMMdd_HHmmss");
 				if (isPhoto)
 					name = "IMG_" + timestamp + ".jpg";
+				else if (isAudio)
+					name = "AUD_" + timestamp + ".mp3";
 				else
 					name = "VID_" + timestamp + ".mp4";
 			}
 
-			string mediaType = (isPhoto) ? Environment.DirectoryPictures : Environment.DirectoryMovies;
+			string mediaType = (isPhoto) ? Environment.DirectoryPictures : 
+				(isAudio ? Environment.DirectoryMusic : Environment.DirectoryMovies);
 			using (Java.IO.File mediaStorageDir = new Java.IO.File (context.GetExternalFilesDir (mediaType), subdir))
 			{
 				if (!mediaStorageDir.Exists())
@@ -325,11 +341,11 @@ namespace Media.Plugin
 						nomedia.CreateNewFile();
 				}
 
-				return Uri.FromFile (new Java.IO.File (GetUniquePath (mediaStorageDir.Path, name, isPhoto)));
+				return Uri.FromFile (new Java.IO.File (GetUniquePath (mediaStorageDir.Path, name, isPhoto, isAudio)));
 			}
 		}
 
-		internal static Task<Tuple<string, bool>> GetFileForUriAsync (Context context, Uri uri, bool isPhoto)
+		internal static Task<Tuple<string, bool>> GetFileForUriAsync (Context context, Uri uri, bool isPhoto, bool isAudio = false)
 		{
 			var tcs = new TaskCompletionSource<Tuple<string, bool>>();
 
@@ -359,7 +375,7 @@ namespace Media.Plugin
 							if (contentPath == null || !contentPath.StartsWith ("file"))
 							{
 								copied = true;
-								Uri outputPath = GetOutputMediaFile (context, "temp", null, isPhoto);
+								Uri outputPath = GetOutputMediaFile (context, "temp", null, isPhoto, isAudio);
 
 								try
 								{
